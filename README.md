@@ -20,4 +20,4 @@ $ make: *** [makefile:12: out] Erro 75
 
 Esse "Erro" o retorno do "codigo" compilado.
 
-Caso de erros na compilação, eles serão descritos no make.
+Caso dê erros na compilação, eles serão descritos no make.
