@@ -12,4 +12,4 @@ Ao final do make aparecera uma mensagem semelhante a esta:
 $ make: *** [makefile:12: out] Erro 75
 ```
 
-Essa mensagem é o retorno do "codigo" compilado.
+Esse "Erro" o retorno do "codigo" compilado.
