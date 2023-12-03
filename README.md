@@ -1,7 +1,10 @@
 # Projeto final para a disciplina de compiladores
 
 # Instruções
-Para compilação do compilador e compilação do codigo minimo
+Alteração da entrada
+-Altere o arquivo "in.c". 
+-Não renomeie o arquivo.
+Para compilação do compilador e compilação do codigo minimo.
 
 ```bash 
 $ make
