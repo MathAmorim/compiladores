@@ -1,2 +1,1 @@
-# compiladores
-Projeto final para a disciplina de compiladores
+# Projeto final para a disciplina de compiladores
