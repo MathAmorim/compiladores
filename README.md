@@ -1,9 +1,12 @@
 # Projeto final para a disciplina de compiladores
 
 # Instruções
+
 Alteração da entrada
--Altere o arquivo "in.c". 
--Não renomeie o arquivo.
+
+- Altere o arquivo "in.c". 
+- Não renomeie o arquivo.
+
 Para compilação do compilador e compilação do codigo minimo.
 
 ```bash 
