@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 #define TAM 18
+#define SIM 8
+#define ERROR_CODE -77777
+int aqui = 8;
 
 
 extern int linha;
@@ -24,13 +27,22 @@ typedef struct hash_table{
 	struct no *vet[TAM];
 }Hash_table;
 
-//##### funções para manipulação da lista
+Hash_table T;
+/* funções para manipulação da lista*/
 /* void mostrar_lista(No **C){
 	No *p;
 	for (p=*C; p!=NULL; p=p->prox){
 		printf("%s = %i ", p->var,p->dado);
 	}
 } */
+
+int yyerror(char *msg){
+	printf("\n");
+	system("echo \"\\e[1;31mErro:\"");
+	printf("%s (Linha: %i, Coluna: %i) \"%s\"\n", msg, linha, coluna-yyleng, yytext);
+	system("echo \"\\e[0m\"");
+	exit(0);
+}
 
 void inserir_lista(No **C, int valor, char var[]){
 	No *novo;
@@ -53,26 +65,61 @@ int buscar_valor_lista(No **C, char var[]){
 		if(strcmp(p->var,var) == 0)
 			return p->dado;
 	}
-	return -999999;
+	return ERROR_CODE;
 }
 /* funções para tabela hash*/
-int hash(int k){
-	return (k*5)%TAM;
+int hash(char * key){
+  int final = 0xFF586;
+  for(int i = 0; i < strlen(key); i++){
+    final += key[i];
+  }
+
+  return (final *5)%TAM;
 }
 
 void inserir_tabela_hash(Hash_table *T, int valor, char var[]){
-	int n = strlen(var);
-	inserir_lista(&T->vet[hash(n)], valor, var);
+	
+	inserir_lista(&T->vet[hash(var)], valor, var);
 }
 
 int buscar_valor_tabela_hash(Hash_table *T, char var[]){
-	int n = strlen(var);
-	return buscar_valor_lista(&T->vet[hash(n)], var);
+	
+	return buscar_valor_lista(&T->vet[hash(var)], var);
 }
 
 void inicializar_tabela(Hash_table *T){
 	for (int i=0; i<TAM; i++)
 		T->vet[i] = NULL;
+}
+
+void criar_variavel(char *var_name){
+	if(buscar_valor_tabela_hash(&T, var_name) != ERROR_CODE){
+		yyerror("Variavel já declarada! ");
+	}
+	fprintf(f, "	subq $8, %%rsp\n");
+	inserir_tabela_hash(&T, aqui, var_name);
+	aqui += SIM;
+
+}
+
+void valor_variavel(char *var_name){
+	int offset = buscar_valor_tabela_hash(&T, var_name);
+	if (offset == ERROR_CODE){
+		system("echo \"\\e[1;31mErro: \"");
+		yyerror("Variavel não declarada! ");
+		system("echo \"\\e[0m\"");
+	}
+	fprintf(f, "	popq	-%d(%%rbp)\n", offset);
+}
+
+void empilha_valor_variavel(char *var_name){
+	int offset = buscar_valor_tabela_hash(&T, var_name);
+	if (offset == ERROR_CODE){
+		system("echo \"\\e[1;31mErro:\"");
+		yyerror("Variavel não declarada! ");
+		system("echo \"\\e[0m\"");
+	}
+	fprintf(f, "	pushq	-%d(%%rbp)\n", offset);
 }
 /* void mostrar_tabela(Hash_table *T){
 	for (int i=0; i<TAM; i++){
@@ -84,13 +131,8 @@ void inicializar_tabela(Hash_table *T){
  */
 
 /* Geração de código assembly*/
-int yyerror(char *msg){
-	printf("\n");
-	system("echo \"\\e[1;31mErro:\"");
-	printf("%s (Linha: %i, Coluna: %i) \"%s\"\n", msg, linha, coluna-yyleng, yytext);
-	system("echo \"\\e[0m\"");
-	exit(0);
-}
+
+
 int yylex(void);
 
 void montar_codigo_inicial(){
@@ -98,6 +140,8 @@ void montar_codigo_inicial(){
 	fprintf(f, ".text\n");
 	fprintf(f, "    .global _start\n\n");
     	fprintf(f, "_start:\n\n");
+		fprintf(f, "pushq	%%rbp\n\n");
+		fprintf(f, "movq	%%rsp, %%rbp\n\n");
 }
 
 void montar_codigo_final(){
@@ -161,7 +205,8 @@ void montar_mult(int a, int b){
 void montar_codigo_empilhar(int a){
 	fprintf(f, "    pushq    $%i\n",a);
 }
-Hash_table T;
+
+
 %}
 %union {
 char *string;
@@ -186,10 +231,11 @@ exp         : exp MAIS exp {montar_codigo_exp('+');}
 			| exp MULT exp {montar_codigo_exp('*');}
 			| ABRE_PARENTESES exp FECHA_PARENTESES
 			| NUM {montar_codigo_empilhar($1);}
-			| ID {int id = buscar_valor_tabela_hash(&T,$1); if(id !=-999999){montar_codigo_empilhar(id);}else{printf("\n");system("echo \"\\e[1;31mErro:\""); printf("(%i, %i) Erro: \"Variavel não declarada - %s\"\n", linha, coluna-yyleng,$1); system("echo \"\\e[0m\"");exit(0);}}
+			| ID {empilha_valor_variavel($1);}
 			;
-var			: INT ID IGUAL NUM{inserir_tabela_hash(&T,$4,$2);}
-			| INT ID {if (buscar_valor_tabela_hash(&T,$2)==-999999){inserir_tabela_hash(&T,0,$2);}else{printf("\n");system("echo \"\\e[1;31mErro:\""); printf("(%i, %i) Erro: \"Variavel já declarada - %s\"\n", linha, coluna-yyleng,$2); system("echo \"\\e[0m\"");exit(0);}}
+var			: INT ID IGUAL exp {criar_variavel($2); valor_variavel($2);}
+			| INT ID {criar_variavel($2);}
+			| ID IGUAL exp {valor_variavel($1);}
 			;
 %%
 int main(){
