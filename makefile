@@ -1,4 +1,4 @@
-PROJ_NAME=Cmin
+PROJ_NAME=Mcc
 
 LEX=flex
 YACC= bison -d
@@ -6,8 +6,8 @@ YFLAGS = -d
 CC=gcc
 CCFLAGS= -lm
 
-out: Cmin in.c
-	@ ./Cmin < in.c
+out: Mcc in.c
+	@ ./Mcc < in.c
 	@ echo "Executando..."
 	@ ./out
 	@ echo $?
