@@ -16,7 +16,7 @@ extern int yyleng;
 extern char *yytext;
 FILE *f;
 
-
+enum OPERADOR{ Menor, Menor_Igual, Maior, Maior_Igual, Diferente, Igual_Igual};
 typedef struct no{
 	char var[25];
 	int dado;
@@ -96,7 +96,7 @@ void criar_variavel(char *var_name){
 	if(buscar_valor_tabela_hash(&T, var_name) != ERROR_CODE){
 		yyerror("Variavel já declarada! ");
 	}
-	fprintf(f, "	subq $8, %%rsp\n");
+	fprintf(f, "	subq	$8, %%rsp\n\n");
 	inserir_tabela_hash(&T, aqui, var_name);
 	aqui += SIM;
 
@@ -109,7 +109,7 @@ void valor_variavel(char *var_name){
 		yyerror("Variavel não declarada! ");
 		system("echo \"\\e[0m\"");
 	}
-	fprintf(f, "	popq	-%d(%%rbp)\n", offset);
+	fprintf(f, "	popq	-%d(%%rbp)\n\n", offset);
 }
 
 void empilha_valor_variavel(char *var_name){
@@ -119,7 +119,7 @@ void empilha_valor_variavel(char *var_name){
 		yyerror("Variavel não declarada! ");
 		system("echo \"\\e[0m\"");
 	}
-	fprintf(f, "	pushq	-%d(%%rbp)\n", offset);
+	fprintf(f, "	pushq	-%d(%%rbp)\n\n", offset);
 }
 /* void mostrar_tabela(Hash_table *T){
 	for (int i=0; i<TAM; i++){
@@ -140,8 +140,8 @@ void montar_codigo_inicial(){
 	fprintf(f, ".text\n");
 	fprintf(f, "    .global _start\n\n");
     	fprintf(f, "_start:\n\n");
-		fprintf(f, "pushq	%%rbp\n\n");
-		fprintf(f, "movq	%%rsp, %%rbp\n\n");
+		fprintf(f, "	pushq	%%rbp\n");
+		fprintf(f, "	movq	%%rsp, %%rbp\n\n");
 }
 
 void montar_codigo_final(){
@@ -163,19 +163,19 @@ void montar_codigo_exp(char op){
 			fprintf(f, "    popq    %%rax\n");
 			fprintf(f, "    popq    %%rbx\n");
 			fprintf(f, "    addq    %%rbx, %%rax\n");
-			fprintf(f, "    pushq     %%rax\n\n");
+			fprintf(f, "    pushq   %%rax\n\n");
 			break;
 		case '-':
 			fprintf(f, "    popq    %%rax\n");
 			fprintf(f, "    popq    %%rbx\n");
 			fprintf(f, "    subq    %%rbx, %%rax\n");
-			fprintf(f, "    pushq     %%rax\n\n");
+			fprintf(f, "    pushq   %%rax\n\n");
 			break;
 		case '*':
 			fprintf(f, "    popq    %%rax\n");
 			fprintf(f, "    popq    %%rbx\n");
-			fprintf(f, "    imulq    %%rbx, %%rax\n");
-			fprintf(f, "    pushq     %%rax\n\n");
+			fprintf(f, "    imulq   %%rbx, %%rax\n");
+			fprintf(f, "    pushq   %%rax\n\n");
 			break;
 	}
 	
@@ -206,14 +206,41 @@ void montar_codigo_empilhar(int a){
 	fprintf(f, "    pushq    $%i\n",a);
 }
 
-
+void monta_cond(int cond){
+	fprintf(f, "# Comparacao\n");
+	fprintf(f, "	popq	%%rbx\n");
+	fprintf(f, "	popq	%%rax\n");
+	fprintf(f, "	cmpq	%%rbx, %%rax\n");
+	switch(cond){
+		case Menor:{
+			fprintf(f, "	setl	%%al\n");
+		}break;
+		case Menor_Igual:{
+			fprintf(f, "	setle	%%al\n");
+		}break;
+		case Maior:{
+			fprintf(f, "	setg	%%al\n");
+		}break;
+		case Maior_Igual:{
+			fprintf(f, "	setge	%%al\n");
+		}break;
+		case Diferente:{
+			fprintf(f, "	setne	%%al\n");	
+		}break;
+		case Igual_Igual:{
+			fprintf(f, "	sete	%%al\n");
+		}break;
+	}
+	fprintf(f, "    movzbq	%%al, %%rax\n");
+	fprintf(f, "	pushq	%%rax\n\n");
+}
 %}
 %union {
 char *string;
 int inteiro;
 }
 
-%token ABRE_PARENTESES FECHA_PARENTESES INT IGUAL RETURN FECHA_CHAVES PONTO_E_VIRGULA ABRE_CHAVES MAIN
+%token ABRE_PARENTESES MAIOR MENOR DIFERENTE FECHA_PARENTESES INT IGUAL RETURN FECHA_CHAVES PONTO_E_VIRGULA ABRE_CHAVES MAIN
 %token MAIS MENOS MULT
 %token<string> ID
 %token<inteiro> NUM
@@ -222,21 +249,32 @@ int inteiro;
 %%
 
 programa	: INT MAIN ABRE_PARENTESES FECHA_PARENTESES ABRE_CHAVES {montar_codigo_inicial();inicializar_tabela(&T);} corpo FECHA_CHAVES {montar_codigo_final();} ;
+
 corpo		: RETURN exp PONTO_E_VIRGULA {montar_codigo_retorno();} corpo
 			| var PONTO_E_VIRGULA corpo
 			|
 			;
+
 exp         : exp MAIS exp {montar_codigo_exp('+');}
 			| exp MENOS exp {montar_codigo_exp('-');}
 			| exp MULT exp {montar_codigo_exp('*');}
 			| ABRE_PARENTESES exp FECHA_PARENTESES
+			| exp MAIOR exp {monta_cond(Maior);}
+			| exp MAIOR IGUAL exp {monta_cond(Maior_Igual);}
+			| exp MENOR exp {monta_cond(Menor);}
+			| exp MENOR IGUAL exp {monta_cond(Menor_Igual);}
+			| exp DIFERENTE IGUAL exp {monta_cond(Diferente);}
+			| exp IGUAL IGUAL exp {monta_cond(Igual_Igual);}
 			| NUM {montar_codigo_empilhar($1);}
 			| ID {empilha_valor_variavel($1);}
 			;
-var			: INT ID IGUAL exp {criar_variavel($2); valor_variavel($2);}
+
+var			: INT ID {criar_variavel($2);} IGUAL exp {valor_variavel($2);}
 			| INT ID {criar_variavel($2);}
 			| ID IGUAL exp {valor_variavel($1);}
 			;
+
+
 %%
 int main(){
 
