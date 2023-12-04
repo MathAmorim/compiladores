@@ -250,12 +250,12 @@ int inteiro;
 
 programa	: INT MAIN ABRE_PARENTESES FECHA_PARENTESES ABRE_CHAVES {montar_codigo_inicial();inicializar_tabela(&T);} corpo FECHA_CHAVES {montar_codigo_final();} ;
 
-corpo		: RETURN exp PONTO_E_VIRGULA {montar_codigo_retorno();} corpo
+corpo			: RETURN exp PONTO_E_VIRGULA {montar_codigo_retorno();} corpo
 			| var PONTO_E_VIRGULA corpo
 			|
 			;
 
-exp         : exp MAIS exp {montar_codigo_exp('+');}
+exp         		: exp MAIS exp {montar_codigo_exp('+');}
 			| exp MENOS exp {montar_codigo_exp('-');}
 			| exp MULT exp {montar_codigo_exp('*');}
 			| ABRE_PARENTESES exp FECHA_PARENTESES
